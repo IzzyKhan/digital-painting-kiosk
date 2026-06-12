@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Digital Painting Lab</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+    <main id="canvas-container" aria-label="Drawing canvas"></main>
+  </div>
+
+  <button
+    type="button"
+    id="panel-toggle"
+    aria-label="Open brush settings"
+    aria-expanded="false"
+    aria-controls="controls"
+  >
+    ⚙
+  </button>
+
+  <div id="panel-backdrop" hidden aria-hidden="true"></div>
+
+  <aside id="controls" aria-label="Drawing controls">
+    <div class="panel-header">
+      <h1>Art Lab</h1>
+      <button type="button" id="panel-close" class="control-btn" aria-label="Close panel">
+        ✕
+      </button>
+    </div>
+
+    <section class="control-group">
+      <h2>Shape</h2>
+      <div class="button-row" id="shape-buttons">
+        <button type="button" class="control-btn is-active" data-shape="circle">Circle</button>
+        <button type="button" class="control-btn" data-shape="square">Square</button>
+        <button type="button" class="control-btn" data-shape="triangle">Triangle</button>
+        <button type="button" class="control-btn" data-shape="eraser">Eraser</button>
+      </div>
+    </section>
+
+    <section class="control-group" id="colour-section">
+      <h2>Colour</h2>
+
+      <label class="slider-label" for="hue-slider">Hue</label>
+      <input
+        type="range"
+        id="hue-slider"
+        class="control-slider colour-control"
+        min="0"
+        max="360"
+        value="200"
+        aria-label="Brush hue"
+      />
+
+      <label class="slider-label" for="saturation-slider">Intensity</label>
+      <input
+        type="range"
+        id="saturation-slider"
+        class="control-slider colour-control"
+        min="0"
+        max="100"
+        value="80"
+        aria-label="Colour intensity"
+      />
+
+      <label class="slider-label" for="brightness-slider">Brightness</label>
+      <input
+        type="range"
+        id="brightness-slider"
+        class="control-slider colour-control"
+        min="0"
+        max="100"
+        value="95"
+        aria-label="Colour brightness"
+      />
+
+      <div class="colour-legend">
+        <div id="hue-swatch" class="colour-swatch" aria-hidden="true"></div>
+      </div>
+    </section>
+
+    <section class="control-group" id="size-section">
+      <h2>Size</h2>
+      <input
+        type="range"
+        id="size-slider"
+        class="control-slider"
+        min="4"
+        max="120"
+        value="48"
+        aria-label="Brush or eraser size"
+      />
+      <span id="size-label" class="metric-label size-label">Size 48</span>
+    </section>
+
+    <section class="control-group">
+      <h2>Actions</h2>
+      <div class="button-row">
+        <button type="button" id="clear-btn" class="control-btn">Clear</button>
+        <button type="button" id="export-btn" class="control-btn">Export PNG</button>
+      </div>
+    </section>
+  </aside>
+
+  <script src="node_modules/p5/lib/p5.min.js"></script>
+  <script src="main.js"></script>
+  <script src="sketch.js"></script>
+</body>
+</html>

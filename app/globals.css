@@ -1,0 +1,64 @@
+@import "tailwindcss";
+
+/* Design tokens — single source of truth for the visual system.
+   Change a value here to restyle the whole app (the future "icing" pass). */
+@theme {
+  /* Surfaces (back-to-front) */
+  --color-canvas: #1a1a1a;
+  --color-canvas-sunken: #111111;
+  --color-surface: #242424;
+  --color-control: #333333;
+  --color-control-hover: #3d3d3d;
+  --color-control-active: #4a4a4a;
+
+  /* Borders */
+  --color-border: #444444;
+  --color-border-subtle: #333333;
+
+  /* Text */
+  --color-ink: #f0f0f0;
+  --color-ink-muted: #aaaaaa;
+  --color-ink-faint: #777777;
+
+  /* Accent + status */
+  --color-accent: #6b9fff;
+  --color-accent-surface: #4a6fa5;
+  --color-danger: #f87171;
+
+  /* Radius — 0 = sharp, gallery-style square corners */
+  --radius-control: 0;
+
+  /* Type — swap to `var(--font-geist-sans), …` when ready to restyle. */
+  --font-sans: system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+}
+
+:root {
+  --background: var(--color-canvas);
+  --foreground: var(--color-ink);
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+}
+
+body.drawing-mode,
+body.drawing-mode canvas {
+  cursor: none;
+}
+
+body.drawing-mode .panel-controls,
+body.drawing-mode .panel-controls * {
+  cursor: pointer;
+}
+
+body.drawing-mode .panel-controls [disabled],
+body.drawing-mode .panel-controls [aria-disabled="true"] * {
+  cursor: not-allowed;
+}

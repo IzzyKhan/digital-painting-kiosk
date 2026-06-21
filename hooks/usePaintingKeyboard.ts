@@ -4,10 +4,10 @@ import { useEffect, useRef } from "react";
 import type { BrushParams, BrushShape } from "@/lib/brushParams";
 
 const SHAPE_KEYS: Record<string, BrushShape> = {
-  "1": "circle",
-  "2": "square",
-  "3": "triangle",
-  "4": "eraser",
+  c: "circle",
+  s: "square",
+  t: "triangle",
+  e: "eraser",
 };
 
 function clamp(value: number, min: number, max: number) {
@@ -17,23 +17,20 @@ function clamp(value: number, min: number, max: number) {
 type UsePaintingKeyboardOptions = {
   params: BrushParams;
   onParamsChange: (next: BrushParams) => void;
-  onClear: () => void;
 };
 
 export function usePaintingKeyboard({
   params,
   onParamsChange,
-  onClear,
 }: UsePaintingKeyboardOptions) {
   const paramsRef = useRef(params);
   const onParamsChangeRef = useRef(onParamsChange);
-  const onClearRef = useRef(onClear);
   const saturationDir = useRef(1);
   const brightnessDir = useRef(1);
+  const opacityDir = useRef(1);
 
   paramsRef.current = params;
   onParamsChangeRef.current = onParamsChange;
-  onClearRef.current = onClear;
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -47,13 +44,14 @@ export function usePaintingKeyboard({
 
       const p = paramsRef.current;
       const key = e.key;
+      const keyLower = key.toLowerCase();
       let next: BrushParams | null = null;
 
-      if (key in SHAPE_KEYS) {
-        next = { ...p, shape: SHAPE_KEYS[key] };
-      } else if (key === "c" && p.shape !== "eraser") {
+      if (keyLower in SHAPE_KEYS) {
+        next = { ...p, shape: SHAPE_KEYS[keyLower] };
+      } else if (keyLower === "h" && p.shape !== "eraser") {
         next = { ...p, hue: (p.hue + 5) % 360 };
-      } else if (key === "s" && p.shape !== "eraser") {
+      } else if (keyLower === "i" && p.shape !== "eraser") {
         if (p.saturation >= 100) saturationDir.current = -1;
         if (p.saturation <= 0) saturationDir.current = 1;
         next = {
@@ -64,7 +62,7 @@ export function usePaintingKeyboard({
             100
           ),
         };
-      } else if (key === "b" && p.shape !== "eraser") {
+      } else if (keyLower === "b" && p.shape !== "eraser") {
         if (p.brightness >= 100) brightnessDir.current = -1;
         if (p.brightness <= 0) brightnessDir.current = 1;
         next = {
@@ -74,6 +72,13 @@ export function usePaintingKeyboard({
             0,
             100
           ),
+        };
+      } else if (keyLower === "o" && p.shape !== "eraser") {
+        if (p.alpha >= 100) opacityDir.current = -1;
+        if (p.alpha <= 5) opacityDir.current = 1;
+        next = {
+          ...p,
+          alpha: clamp(p.alpha + 5 * opacityDir.current, 5, 100),
         };
       } else if (key === "+" || key === "=") {
         if (p.shape === "eraser") {
@@ -87,10 +92,6 @@ export function usePaintingKeyboard({
         } else {
           next = { ...p, size: clamp(p.size - 4, 4, 120) };
         }
-      } else if (key === "r" || key === "R") {
-        e.preventDefault();
-        onClearRef.current();
-        return;
       }
 
       if (next) {

@@ -11,34 +11,17 @@ type SketchActions = Pick<
 
 type PaintingCanvasProps = {
   params: BrushParams;
-  panelOpen: boolean;
-  blockCanvasInput: boolean;
   onReady?: (api: SketchActions) => void;
 };
 
-export function PaintingCanvas({
-  params,
-  panelOpen,
-  blockCanvasInput,
-  onReady,
-}: PaintingCanvasProps) {
+export function PaintingCanvas({ params, onReady }: PaintingCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const paramsRef = useRef(params);
-  const panelOpenRef = useRef(panelOpen);
-  const blockCanvasInputRef = useRef(blockCanvasInput);
   const onReadyRef = useRef(onReady);
 
   useEffect(() => {
     paramsRef.current = params;
   }, [params]);
-
-  useEffect(() => {
-    panelOpenRef.current = panelOpen;
-  }, [panelOpen]);
-
-  useEffect(() => {
-    blockCanvasInputRef.current = blockCanvasInput;
-  }, [blockCanvasInput]);
 
   useEffect(() => {
     onReadyRef.current = onReady;
@@ -56,8 +39,7 @@ export function PaintingCanvas({
       api = createPaintingSketch({
         container: containerRef.current,
         getParams: () => paramsRef.current,
-        isDrawingBlocked: () =>
-          panelOpenRef.current || blockCanvasInputRef.current,
+        isDrawingBlocked: () => false,
       });
       void api.whenReady().then(() => {
         if (cancelled || !api) return;
@@ -81,9 +63,7 @@ export function PaintingCanvas({
   return (
     <div
       ref={containerRef}
-      className={`h-full w-full touch-none [&_canvas]:block ${
-        panelOpen ? "pointer-events-none" : ""
-      }`}
+      className="h-full w-full touch-none [&_canvas]:block"
       aria-label="Drawing canvas"
     />
   );

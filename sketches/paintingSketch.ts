@@ -36,6 +36,7 @@ export function createPaintingSketch(
   let destroyed = false;
   let ready = false;
   let resolveReady: (() => void) | undefined;
+  let removePointerListeners: (() => void) | undefined;
   const readyPromise = new Promise<void>((resolve) => {
     resolveReady = resolve;
   });
@@ -180,13 +181,76 @@ export function createPaintingSketch(
   const sketch = (p: P5) => {
     pInstance = p;
 
-    const mouseOnCanvas = () =>
-      p.width > 0 &&
-      p.height > 0 &&
-      p.mouseX >= 0 &&
-      p.mouseX < p.width &&
-      p.mouseY >= 0 &&
-      p.mouseY < p.height;
+    let canvasEl: HTMLCanvasElement | null = null;
+    let ptrX = 0;
+    let ptrY = 0;
+    let ptrOnCanvas = false;
+    let ptrPressed = false;
+    let hasStablePtr = false;
+
+    const maxPtrJump = () => Math.max(p.width, p.height) * 0.35;
+
+    const clientToCanvas = (clientX: number, clientY: number) => {
+      if (!canvasEl || p.width === 0 || p.height === 0) return null;
+
+      const rect = canvasEl.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) return null;
+
+      return {
+        x: ((clientX - rect.left) / rect.width) * p.width,
+        y: ((clientY - rect.top) / rect.height) * p.height,
+      };
+    };
+
+    const eventToCanvas = (e: PointerEvent) => {
+      if (!canvasEl || p.width === 0 || p.height === 0) return null;
+
+      if (e.target === canvasEl) {
+        const elW = canvasEl.offsetWidth;
+        const elH = canvasEl.offsetHeight;
+        if (elW > 0 && elH > 0) {
+          return {
+            x: (e.offsetX / elW) * p.width,
+            y: (e.offsetY / elH) * p.height,
+          };
+        }
+      }
+
+      return clientToCanvas(e.clientX, e.clientY);
+    };
+
+    const applyCanvasPoint = (x: number, y: number, force: boolean) => {
+      const onCanvas =
+        x >= 0 && x < p.width && y >= 0 && y < p.height;
+
+      if (!force && hasStablePtr) {
+        const jump = Math.hypot(x - ptrX, y - ptrY);
+        if (jump > maxPtrJump()) {
+          return false;
+        }
+      }
+
+      ptrX = x;
+      ptrY = y;
+      if (onCanvas) {
+        hasStablePtr = true;
+      }
+      ptrOnCanvas = onCanvas;
+      return true;
+    };
+
+    const updatePointer = (e: PointerEvent, force = false) => {
+      const pt = eventToCanvas(e);
+      if (!pt) {
+        ptrOnCanvas = false;
+        return;
+      }
+
+      applyCanvasPoint(pt.x, pt.y, force);
+    };
+
+    const pointerOnCanvas = () =>
+      p.width > 0 && p.height > 0 && ptrOnCanvas;
 
     const drawTriangleAt = (
       target: P5 | p5.Graphics,
@@ -281,6 +345,11 @@ export function createPaintingSketch(
       const step = minStep + (maxStep - minStep) * spacing * spacing;
 
       const dist = Math.hypot(x2 - x1, y2 - y1);
+      if (dist < 0.5) {
+        drawBrush(layer, x2, y2);
+        return;
+      }
+
       const count = Math.floor(dist / step);
 
       for (let i = 1; i <= count; i++) {
@@ -290,10 +359,105 @@ export function createPaintingSketch(
       drawBrush(layer, x2, y2);
     };
 
+    // Track stroke anchor ourselves. p5 mouse coords can be wrong in Chrome
+    // fullscreen near the top edge, so pointer position comes from native
+    // pointer events + getBoundingClientRect instead.
+    let strokeActive = false;
+    let lastStrokeX = 0;
+    let lastStrokeY = 0;
+
+    const beginStroke = () => {
+      if (isDrawingBlocked() || !pointerOnCanvas() || !artLayer) return;
+      strokeActive = true;
+      lastStrokeX = ptrX;
+      lastStrokeY = ptrY;
+      drawBrush(artLayer, lastStrokeX, lastStrokeY);
+    };
+
+    const endStroke = () => {
+      strokeActive = false;
+    };
+
+    const continueStroke = () => {
+      if (isDrawingBlocked()) {
+        if (strokeActive) endStroke();
+        return;
+      }
+      if (!strokeActive || !ptrPressed || !pointerOnCanvas() || !artLayer) {
+        return;
+      }
+
+      const x2 = ptrX;
+      const y2 = ptrY;
+
+      // Reject coordinate teleports (resize glitches, bad pointer events).
+      const maxJump = Math.max(p.width, p.height) * 0.35;
+      const jump = Math.hypot(x2 - lastStrokeX, y2 - lastStrokeY);
+      if (jump > maxJump) {
+        return;
+      }
+
+      strokeBetween(artLayer, lastStrokeX, lastStrokeY, x2, y2);
+      lastStrokeX = x2;
+      lastStrokeY = y2;
+    };
+
+    const attachPointerListeners = (el: HTMLCanvasElement) => {
+      const onPointerMove = (e: PointerEvent) => {
+        updatePointer(e);
+      };
+
+      const onPointerDown = (e: PointerEvent) => {
+        if (e.button !== 0) return;
+        updatePointer(e, true);
+        if (isDrawingBlocked() || !pointerOnCanvas() || !artLayer) return;
+
+        el.setPointerCapture(e.pointerId);
+        ptrPressed = true;
+        beginStroke();
+      };
+
+      const onPointerUp = (e: PointerEvent) => {
+        if (el.hasPointerCapture(e.pointerId)) {
+          el.releasePointerCapture(e.pointerId);
+        }
+        updatePointer(e, true);
+        ptrPressed = false;
+        endStroke();
+      };
+
+      const onPointerEnter = (e: PointerEvent) => {
+        updatePointer(e, true);
+      };
+
+      const onPointerLeave = () => {
+        ptrOnCanvas = false;
+      };
+
+      el.addEventListener("pointermove", onPointerMove, { passive: true });
+      el.addEventListener("pointerdown", onPointerDown);
+      el.addEventListener("pointerup", onPointerUp);
+      el.addEventListener("pointercancel", onPointerUp);
+      el.addEventListener("pointerenter", onPointerEnter);
+      el.addEventListener("pointerleave", onPointerLeave);
+
+      removePointerListeners = () => {
+        el.removeEventListener("pointermove", onPointerMove);
+        el.removeEventListener("pointerdown", onPointerDown);
+        el.removeEventListener("pointerup", onPointerUp);
+        el.removeEventListener("pointercancel", onPointerUp);
+        el.removeEventListener("pointerenter", onPointerEnter);
+        el.removeEventListener("pointerleave", onPointerLeave);
+        canvasEl = null;
+      };
+    };
+
     p.setup = () => {
       p.pixelDensity(1);
       const canvas = p.createCanvas(100, 100);
       canvas.parent(container);
+      canvasEl = canvas.elt as HTMLCanvasElement;
+      attachPointerListeners(canvasEl);
       p.noCursor();
       p.colorMode(p.HSB, 360, 100, 100, 100);
       syncSize();
@@ -310,16 +474,20 @@ export function createPaintingSketch(
 
       const blocked = isDrawingBlocked();
 
-      if (!blocked && mouseOnCanvas()) {
-        drawPreview(p.mouseX, p.mouseY);
+      if (!blocked && pointerOnCanvas()) {
+        drawPreview(ptrX, ptrY);
       }
 
-      if (!blocked && p.mouseIsPressed && mouseOnCanvas()) {
-        strokeBetween(artLayer, p.pmouseX, p.pmouseY, p.mouseX, p.mouseY);
+      continueStroke();
+
+      if (strokeActive && !ptrPressed) {
+        endStroke();
       }
     };
 
     p.windowResized = () => {
+      endStroke();
+      hasStablePtr = false;
       syncSize();
     };
   };
@@ -334,6 +502,8 @@ export function createPaintingSketch(
     whenReady: () => readyPromise,
     destroy: () => {
       destroyed = true;
+      removePointerListeners?.();
+      removePointerListeners = undefined;
       resolveReady?.();
       resolveReady = undefined;
       artLayer = undefined;

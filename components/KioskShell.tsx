@@ -35,8 +35,6 @@ export function KioskShell() {
   const prevArtworkIdFromUrlRef = useRef<string | null>(null);
   const [sketchVersion, setSketchVersion] = useState(0);
   const [params, setParams] = useState<BrushParams>({ ...DEFAULT_BRUSH_PARAMS });
-  const [panelOpen, setPanelOpen] = useState(false);
-  const [blockCanvasInput, setBlockCanvasInput] = useState(false);
   const [title, setTitle] = useState("");
   const [editingArtworkId, setEditingArtworkId] = useState<string | null>(null);
   const [isLoadingArtwork, setIsLoadingArtwork] = useState(false);
@@ -116,7 +114,6 @@ export function KioskShell() {
   usePaintingKeyboard({
     params,
     onParamsChange: setParams,
-    onClear: () => sketchRef.current?.clearArt(),
   });
 
   const handleSave = async () => {
@@ -184,32 +181,21 @@ export function KioskShell() {
   };
 
   return (
-    <div className="flex h-screen w-screen flex-col overflow-hidden bg-canvas text-ink">
-      <main className="relative min-h-0 flex-1 bg-canvas">
-        <PaintingCanvas
-          params={params}
-          panelOpen={panelOpen}
-          blockCanvasInput={blockCanvasInput}
-          onReady={handleSketchReady}
-        />
-      </main>
-
-      <ControlPanel
-        params={params}
-        onParamsChange={setParams}
-        panelOpen={panelOpen}
-        onPanelOpenChange={setPanelOpen}
-        onBlockCanvasInput={setBlockCanvasInput}
-        onClear={() => sketchRef.current?.clearArt()}
-        title={title}
-        onTitleChange={setTitle}
-        onSave={handleSave}
-        saveStatus={saveStatus}
-        saveMessage={saveMessage}
-        saveLabel={saveTargetId ? "Update gallery" : "Save to gallery"}
-        saveDisabled={isLoadingArtwork}
-        savedArtworkId={saveTargetId}
-      />
-    </div>
+    <ControlPanel
+      params={params}
+      onParamsChange={setParams}
+      onClear={() => sketchRef.current?.clearArt()}
+      title={title}
+      onTitleChange={setTitle}
+      onSave={handleSave}
+      saveStatus={saveStatus}
+      saveMessage={saveMessage}
+      saveLabel={saveTargetId ? "Update gallery" : "Save to gallery"}
+      saveDisabled={isLoadingArtwork}
+      savedArtworkId={saveTargetId}
+      canvas={
+        <PaintingCanvas params={params} onReady={handleSketchReady} />
+      }
+    />
   );
 }

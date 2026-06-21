@@ -5,13 +5,19 @@ import { useState } from "react";
 type EmailArtworkFormProps = {
   artworkId: string;
   className?: string;
+  variant?: "default" | "inline";
 };
 
 type Status = "idle" | "sending" | "sent" | "error";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export function EmailArtworkForm({ artworkId, className }: EmailArtworkFormProps) {
+export function EmailArtworkForm({
+  artworkId,
+  className,
+  variant = "default",
+}: EmailArtworkFormProps) {
+  const inline = variant === "inline";
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState("");
@@ -56,36 +62,83 @@ export function EmailArtworkForm({ artworkId, className }: EmailArtworkFormProps
   };
 
   return (
-    <form onSubmit={handleSubmit} className={className}>
-      <label
-        className="mb-1 block text-[0.8rem] text-ink-muted"
-        htmlFor={`email-${artworkId}`}
+    <div className={inline ? `shrink-0 ${className ?? ""}` : className}>
+      <form
+        onSubmit={handleSubmit}
+        className={
+          inline ? "flex shrink-0 flex-nowrap items-center gap-2" : undefined
+        }
       >
-        Email it to yourself
-      </label>
-      <div className="flex gap-2">
-        <input
-          id={`email-${artworkId}`}
-          type="email"
-          inputMode="email"
-          autoComplete="email"
-          placeholder="you@example.com"
-          value={email}
-          onChange={(event) => {
-            setEmail(event.target.value);
-            if (status !== "idle") setStatus("idle");
-          }}
-          className="min-h-10 flex-1 rounded-control border border-border bg-control px-3 text-sm text-ink placeholder:text-ink-faint"
-        />
-        <button
-          type="submit"
-          disabled={status === "sending"}
-          className="inline-flex min-h-10 items-center justify-center rounded-control border border-border bg-control px-4 text-sm text-ink transition-colors hover:bg-control-hover disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {status === "sending" ? "Sending…" : "Send"}
-        </button>
-      </div>
-      {message ? (
+        {inline ? (
+          <>
+            {message ? (
+              <p
+                className={`max-w-[9rem] shrink-0 truncate text-[0.65rem] ${
+                  status === "error" ? "text-danger" : "text-ink-muted"
+                }`}
+                aria-live="polite"
+              >
+                {message}
+              </p>
+            ) : null}
+            <button
+              type="submit"
+              disabled={status === "sending"}
+              className="kiosk-pill shrink-0 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {status === "sending" ? "Sending…" : "Send"}
+            </button>
+            <label className="sr-only" htmlFor={`email-${artworkId}`}>
+              Email
+            </label>
+            <input
+              id={`email-${artworkId}`}
+              type="email"
+              inputMode="email"
+              autoComplete="email"
+              placeholder="you@example.com"
+              value={email}
+              onChange={(event) => {
+                setEmail(event.target.value);
+                if (status !== "idle") setStatus("idle");
+              }}
+              className="kiosk-input kiosk-input-header h-8"
+            />
+          </>
+        ) : (
+          <>
+            <label
+              className="kiosk-section-label mb-2 block"
+              htmlFor={`email-${artworkId}`}
+            >
+              Email
+            </label>
+            <div className="flex gap-2">
+              <input
+                id={`email-${artworkId}`}
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(event) => {
+                  setEmail(event.target.value);
+                  if (status !== "idle") setStatus("idle");
+                }}
+                className="kiosk-input min-h-8 w-full flex-1"
+              />
+              <button
+                type="submit"
+                disabled={status === "sending"}
+                className="kiosk-pill shrink-0 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {status === "sending" ? "Sending…" : "Send"}
+              </button>
+            </div>
+          </>
+        )}
+      </form>
+      {message && !inline ? (
         <p
           className={`mt-2 text-[0.8rem] ${
             status === "error" ? "text-danger" : "text-ink-muted"
@@ -94,6 +147,6 @@ export function EmailArtworkForm({ artworkId, className }: EmailArtworkFormProps
           {message}
         </p>
       ) : null}
-    </form>
+    </div>
   );
 }
